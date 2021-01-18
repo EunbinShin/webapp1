@@ -1,24 +1,30 @@
 package com.mycompany.webapp.controller;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
-import java.util.List;
 
-import javax.servlet.http.HttpSession;
+import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.multipart.MultipartFile;
 
-import com.mycompany.webapp.dto.Ch07Board;
-import com.mycompany.webapp.dto.Ch08Board;
+import com.mycompany.webapp.dto.Ch09User;
 
 @Controller
-@RequestMapping("/ch08")
+@RequestMapping("/ch09")
 public class Ch09Controller {
 	private static final Logger logger = 
 			LoggerFactory.getLogger(Ch09Controller.class);
@@ -26,78 +32,113 @@ public class Ch09Controller {
 	@GetMapping("/content")
 	public String content() {
 		logger.info("실행");
-		return "ch08/content";
+		return "ch09/content";
 	}
 	
-	@GetMapping("/method1")
-	public String method1(HttpSession session) {
-		logger.info("실행");
-		session.setAttribute("name", "스프링");
-		session.setAttribute("age", 26);
-		session.setAttribute("job", "인공지능 개발자");
+	/*
+	@PostMapping("/fileupload")
+	public String fileupload(Ch09User photo) {
+		//문자 파트 정보 얻기
+		String title = photo.getTitle();
+		String desc = photo.getDesc();
+		logger.info("title: "+title);
+		logger.info("desc: "+desc);
+		//파일 파트 정보 얻기
+		MultipartFile attach = photo.getAttach();
+		String originalFileName = attach.getOriginalFilename();
+		String contentType = attach.getContentType();
+		long size = attach.getSize();
+		logger.info("originalFileName: "+originalFileName);
+		logger.info("contentType: "+contentType);
+		logger.info("size: "+size);
+		return "redirect:/ch09/content";
+	}*/
+	
+	@PostMapping("/photoupload")
+	public String photoUpload(Ch09User user) {
+		//문자 파트 정보 얻기
+		String uid = user.getUid();
+		String uname = user.getUname();
+		String upassword = user.getUpassword();
+		logger.info("uid: "+uid);
+		logger.info("uname: "+uname);
+		logger.info("upassword: "+upassword);
 		
-		return "ch08/el";
-	}
-	
-	@GetMapping("/method2")
-	public String method2(HttpSession session) {
-		logger.info("실행");
-		Ch07Board board = new Ch07Board();
-		board.setNo(1);
-		board.setTitle("너무 추워요");
-		board.setContent("과제하면 덜 추워요. 과제 내 주세요.");
-		board.setWriter("감자바");
-		board.setDate(new Date());
+		//파일 파트 정보 얻기
+		MultipartFile uphoto = user.getUphoto();
+		if(!uphoto.isEmpty()) {
+			String originalFileName = uphoto.getOriginalFilename();
+			String contentType = uphoto.getContentType();
+			long size = uphoto.getSize();
+			logger.info("originalFileName: "+originalFileName);
+			logger.info("contentType: "+contentType);
+			logger.info("size: "+size);
+			
+			//파일경로
+			String saveDirPath = "D:/MyWorkspace/uploadfiles/";
+			//파일 이름
+			String fileName = new Date().getTime()+"_"+originalFileName;
+			//파일 전체 경로
+			String filePath = saveDirPath + fileName;
+			File file = new File(filePath);
+			try {
+				uphoto.transferTo(file);
+			}catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		
-		session.setAttribute("board1", board);
-		
-		return "ch08/el";
-	}	
+		return "redirect:/ch09/content";
+	}
 	
-	@GetMapping("/method3")
-	public String method3(HttpSession session) {
+	@GetMapping("/photolist")
+	public String photoList(Model model) {
 		logger.info("실행");
-		List<Ch07Board> boardList = new ArrayList<>();
-		for(int i = 1 ; i <= 10; i++) {
-			Ch07Board board = new Ch07Board();
-			board.setNo(i);
-			board.setTitle("너무 추워요"+i);
-			board.setContent("과제하면 덜 추워요. 과제 내 주세요."+i);
-			board.setWriter("감자바"+i);
-			board.setDate(new Date());
-			boardList.add(board);
-		}
-		session.setAttribute("boardList", boardList);
-		return "ch08/el";
+		String saveDirPath = "D:/MyWorkspace/uploadfiles/";
+		File dir = new File(saveDirPath);
+		String[] fileNames = dir.list();
+		model.addAttribute("fileNames", fileNames);
+		return "ch09/photolist";
 	}
 	
-	@PostMapping("/login")
-	public String login(HttpSession session, String uid, String upassword) {
-		if(uid.equals("admin") && upassword.equals("12345")) {
-			session.setAttribute("loginStatus", uid);
+	@GetMapping("/photodownload")
+	public void photoDownload(String photo,  HttpServletResponse response) {
+		logger.info("실행");
+		//응답이 없으면 임의로 jsp응답을 만들기 때문에 응답을 내보내야됨(HttpServletResponse사용)
+		//보내고자하는 응답이 뭔지 알려주는 메소드, uphoto.getContentType()을 db에 저장해야하는 이유
+		response.setContentType("image/jpeg");	//응답 본문 데이터의 종류를 응답 헤더에 추가 response.setHeader("content-type", "image/jpeg";
+		
+		//응답 본문 데이터를 파일로 다운로드할 수 있도록 응답 헤더에 추가
+		try {
+			//HTTP 규약에 따라 헤더에 한글을 넣지 못함 그래서 UTF-8을 다시 ISO-8859-1로 변환
+			photo = new String(photo.getBytes("UTF-8"), "ISO-8859-1");
+		} catch (Exception e1) {
+			e1.printStackTrace();
 		}
-		return "redirect:/ch08/content";
-	}
-	
-	@GetMapping("/logout")
-	public String logout(HttpSession session) {
-		//개별적으로 데이터를 삭제
-		session.removeAttribute("loginStatus");
-		//세션의 모든 데이터를 삭제
-		//session.invalidate();
-		return "redirect:/ch08/content";
-	}
-	
-	@PostMapping("/boardWrite")
-	public String boardWrite(Ch08Board board,HttpSession session) {
-		String uid = (String) session.getAttribute("loginStatus");
-		if(uid != null) {	//로그인이 되어있다면
-			board.setWriter(uid);	//작성자에 아이디를 넣어준다
-			logger.info("게시물을 성공적으로 저장함");
-			logger.info("title: "+board.getTitle());
-			logger.info("content: "+board.getContent());
-			logger.info("writer: "+board.getWriter());
+		response.setHeader("Content-Disposition", "attachment; filename=\""+photo+"\"");	//attachment가 들어가면 contents가 다운로드됨
+		
+		try {
+			String saveDirPath = "D:/MyWorkspace/uploadfiles/";
+			String filePath = saveDirPath+photo;	//실제 경로
+			
+			InputStream is = new FileInputStream(filePath);
+			OutputStream os = response.getOutputStream();
+			
+			/*
+			while(true) {
+				byte[] data = new byte[1024];
+				int readByteNum = is.read(data);
+				if(readByteNum == -1) break;
+				os.write(data, 0, readByteNum);	//초과해서 출력하지 않도록 제한 -> readByteNum만큼 만 출력
+			}*/
+			
+			FileCopyUtils.copy(is, os);
+			
+			os.flush();
+			os.close();
+			is.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		return "redirect:/ch08/content";
 	}
 }
