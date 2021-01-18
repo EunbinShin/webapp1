@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+	
+	<!-- XML을 이용한 Setter주입 -->
+	<!-- <bean id="ch13Controller"
+		class="com.mycompany.webapp.controller.Ch13Controller">
+		<property name="service3" ref="ch13Service3"/>	ref에 들어가는 객체를 연결해줌
+		<property name="service4" value="ch13Service4"/>
+	</bean> -->
+	<!-- 같은데 표현만 다름 -->
+	<bean id="ch13Controller"
+		class="com.mycompany.webapp.controller.Ch13Controller"
+		p:service3-ref="ch13Service3"
+		p:service4-ref="ch13Service4">
+	</bean>
+	
+	<!-- Properties 파일 설정 -->
+	<context:property-placeholder location="classpath:/properties/*.properties"/>
+</beans>
